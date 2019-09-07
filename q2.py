@@ -1,7 +1,6 @@
 '''Simple REST API.'''
 
 from flask import Flask, request, make_response, jsonify
-from os import path
 import sqlite3 as sql
 
 app = Flask(__name__)
@@ -48,13 +47,54 @@ def create_recipe():
 
     return result
 
+@app.route('/recipe/edit', methods=['PATCH',])
 def edit_recipe():
-    pass
+    '''Update recipe in table.'''
+    result = make_response(jsonify({'success': 'false'}), 500)
+
+    data = request.form
+
+    # ID is compulsory
+    if 'recipe_id' not in data:
+        return make_response(jsonify({'error': 'ID must be defined'}), 400)
+
+    with sql.connect(db_name) as conn:
+        conn.row_factory = dict_factory
+        c = conn.cursor()
+
+        # Check to see what to update
+        if 'name' in data:
+            update = c.execute('''
+                UPDATE recipes
+                SET name = ?
+                WHERE id = ?
+            ''', (data['name'], data['recipe_id'])).rowcount
+        elif 'description' in data:
+            update = c.execute('''
+                UPDATE recipes
+                SET description = ?
+                WHERE id = ?
+            ''', (data['description'], data['recipe_id'])).rowcount
+        elif 'ingredients' in data:
+            update = c.execute('''
+                UPDATE recipes
+                SET ingredients = ?
+                WHERE id = ?
+            ''', (data['ingredients'], data['recipe_id'])).rowcount
+
+        conn.commit()
+
+        if update == 1:
+            result = make_response(jsonify({'success': 'true'}))
+        elif update == 0:
+            result = make_response(jsonify({'error': 'ID not found'}))
+
+    return result
 
 @app.route('/recipe', methods=['GET',])
 def get_recipe():
     '''Get recipe from table.'''
-    result = {'hello': 'there'}
+    result = None
 
     recipe_id = request.args.get('recipe_id', default=None)
 
