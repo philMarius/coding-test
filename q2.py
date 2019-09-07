@@ -83,8 +83,36 @@ def get_recipe():
 
     return result
 
+@app.route('/recipe/delete', methods=['DELETE',])
 def delete_recipe():
-    pass
+    result = make_response(jsonify({'success': 'false'}), 500)
+
+    recipe_id = request.args.get('recipe_id', default=None)
+
+    if recipe_id is None:
+        return {'error': 'Must provide recipe_id'}
+
+    with sql.connect(db_name) as conn:
+        conn.row_factory = dict_factory
+        c = conn.cursor()
+
+        delete = c.execute(
+            "DELETE FROM recipes WHERE id=?",
+            (recipe_id,)
+        ).rowcount
+        conn.commit()
+
+        # Check if deletion was successful, rowcount = 1 for success
+        if delete == 1:
+            # Successful deletion
+            result['success'] = 'true'
+            result = make_response(jsonify({'success': 'true'}), 200)
+        elif delete == 0:
+            # Unsuccessful deletion
+            result['error'] = 'ID not found'
+            result = make_response(jsonify({'error': 'ID not found'}), 404)
+
+    return result
 
 def create_db():
     '''Create database when starting flask.'''
